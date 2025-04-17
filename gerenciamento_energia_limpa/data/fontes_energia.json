@@ -1,0 +1,11 @@
+[
+    {
+      "id": 1,
+      "nome": "Fonte Solar 1",
+      "localizacao": "São Paulo",
+      "capacidade": 5.0,
+      "marca": "Growatt",
+      "modelo": "MIN 5000TL-X",
+      "data_instalacao": "2025-03-20"
+    }
+  ]

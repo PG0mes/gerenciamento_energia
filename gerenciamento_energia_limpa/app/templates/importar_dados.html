@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}GreenEnergy - Importar Dados{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Início</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('main.detalhe_fonte', fonte_id=fonte.id) }}">{{ fonte.nome }}</a></li>
+                <li class="breadcrumb-item active">Importar Dados</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h2 class="card-title mb-0">Importar Dados - {{ fonte.nome }}</h2>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="importTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv-tab-pane" type="button" role="tab">
+                            Importar CSV
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="simular-tab" data-bs-toggle="tab" data-bs-target="#simular-tab-pane" type="button" role="tab">
+                            Gerar Dados Simulados
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content p-3 border border-top-0 rounded-bottom" id="importTabsContent">
+                    <!-- Importação CSV -->
+                    <div class="tab-pane fade show active" id="csv-tab-pane" role="tabpanel" tabindex="0">
+                        <form method="POST" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="arquivo_csv" class="form-label">Arquivo CSV do Growatt</label>
+                                <input class="form-control" type="file" id="arquivo_csv" name="arquivo_csv" accept=".csv">
+                                <div class="form-text">
+                                    Selecione o arquivo CSV exportado do seu inversor Growatt.
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-info-circle me-2"></i> Instruções para exportação de dados Growatt</h5>
+                                <ol>
+                                    <li>Acesse o portal ShineServer ou o aplicativo ShinePhone</li>
+                                    <li>Navegue até os relatórios ou dados do seu inversor</li>
+                                    <li>Selecione o período desejado</li>
+                                    <li>Exporte os dados em formato CSV</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('main.dashboard', fonte_id=fonte.id) }}" class="btn btn-secondary">Cancelar</a>
+                                <button type="submit" class="btn btn-primary">Importar Dados</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Geração de Dados Simulados -->
+                    <div class="tab-pane fade" id="simular-tab-pane" role="tabpanel" tabindex="0">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="dias_simulados" class="form-label">Número de dias a simular</label>
+                                <input type="number" class="form-control" id="dias_simulados" name="dias_simulados" value="30" min="1" max="365">
+                                <div class="form-text">
+                                    Quantidade de dias históricos a serem gerados para simulação.
+                                </div>
+                            </div>

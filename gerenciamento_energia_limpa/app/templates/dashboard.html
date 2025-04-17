@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ fonte.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-dashboard {
+        transition: transform 0.3s;
+    }
+    .card-dashboard:hover {
+        transform: translateY(-5px);
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .metric-label {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Início</a></li>
+                <li class="breadcrumb-item active">Dashboard - {{ fonte.nome }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <h1>Dashboard - {{ fonte.nome }}</h1>
+        <div>
+            <a href="{{ url_for('main.importar_dados', fonte_id=fonte.id) }}" class="btn btn-primary">
+                <i class="fas fa-file-import me-1"></i> Importar Dados
+            </a>
+            <a href="{{ url_for('main.editar_fonte', fonte_id=fonte.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-edit me-1"></i> Editar Fonte
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Info da Fonte -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">Informações da Instalação</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Localização:</strong> {{ fonte.localizacao }}</p>
+                        <p><strong>Capacidade:</strong> {{ fonte.capacidade }} kWp</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Inversor:</strong> {{ fonte.marca }} {{ fonte.modelo }}</p>
+                        <p><strong>Instalação:</strong> {{ fonte.data_instalacao }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">Status do Sistema</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Status:</strong> <span class="badge bg-success">Ativo</span></p>
+                        <p><strong>Dias monitorados:</strong> {{ metricas.dias_monitorados }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Última atualização:</strong> {{ metricas.ultima_atualizacao or 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card card-dashboard h-100 bg-light">
+            <div class="card-body text-center">
+                <div class="metric-value text-success">{{ metricas.total_energia }} kWh</div>
+                <div class="metric-label">Total de Energia Gerada</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-dashboard h-100 bg-light">
+            <div class="card-body text-center">
+                <div class="metric-value text-primary">{{ metricas.media_diaria }} kWh</div>
+                <div class="metric-label">Média Diária</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-dashboard h-100 bg-light">
+            <div class="card-body text-center">
+                <div class="metric-value text-danger">{{ metricas.potencia_maxima }} kW</div>
+                <div class="metric-label">Pico de Potência</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Produção Diária (kWh)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoProducaoDiaria" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">Produção por Hora (kW)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoProducaoHoraria" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Carregar dados de produção diária
+        fetch('/api/fonte/{{ fonte.id }}/producao-diaria')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('graficoProducaoDiaria').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(item => item.data),
+                        datasets: [{
+                            label: 'Energia Gerada (kWh)',
+                            data: data.map(item => item.energia),
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'kWh'
+                                }
+                            }
+                        },
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            });
+        
+        // Carregar dados de produção horária
+        fetch('/api/fonte/{{ fonte.id }}/producao-horaria')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('graficoProducaoHoraria').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(item => item.hora),
+                        datasets: [{
+                            label: 'Potência (kW)',
+                            data: data.map(item => item.potencia),
+                            backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: 'origin'
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'kW'
+                                }
+                            }
+                        },
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,9 @@
+Flask==2.0.1
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+Flask-WTF==1.0.0
+WTForms==3.0.0
+python-dotenv==0.19.1
