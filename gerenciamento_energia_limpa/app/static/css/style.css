@@ -1,0 +1,173 @@
+/* Variáveis de cores */
+:root {
+    --primary-color: #005eff;      /* Azul claro - cor principal */
+    --primary-dark: #0046c2;       /* Azul escuro para hover */
+    --primary-light: #4d8bff;      /* Azul claro para elementos secundários */
+    --accent-color: #3cd4a0;       /* Cor de destaque */
+    --text-dark: #333333;          /* Texto escuro */
+    --text-light: #ffffff;         /* Texto claro */
+    --background-light: #f8f9fa;   /* Fundo claro */
+    --card-border: rgba(0, 0, 0, 0.125); /* Borda dos cards */
+    --gray-light: #f1f3f5;         /* Cinza claro */
+}
+
+/* Estilos gerais */
+body {
+    font-family: 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Navbar personalizada */
+.navbar-custom {
+    background-color: var(--primary-color) !important;
+}
+
+.navbar-custom .navbar-brand,
+.navbar-custom .nav-link {
+    color: var(--text-light);
+}
+
+.navbar-custom .nav-link:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Botões */
+.btn-primary-custom {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-light);
+}
+
+.btn-primary-custom:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: var(--text-light);
+}
+
+.btn-outline-primary-custom {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline-primary-custom:hover {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+}
+
+/* Cards da página inicial */
+.feature-card {
+    border-radius: 10px;
+    border: 1px solid var(--card-border);
+    transition: transform 0.3s, box-shadow 0.3s;
+    height: 100%;
+    background-color: white;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card .card-header {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    font-weight: 600;
+}
+
+.feature-card .card-body {
+    padding: 2rem 1.5rem;
+}
+
+.feature-card .card-icon {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+/* Seção de boas-vindas */
+.welcome-section {
+    padding: 3rem 0;
+    background-color: var(--gray-light);
+    margin-bottom: 2rem;
+    border-radius: 10px;
+}
+
+.welcome-section h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.welcome-section p {
+    font-size: 1.2rem;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Footer */
+.footer-custom {
+    background-color: #343a40;
+    color: var(--text-light);
+    padding: 2rem 0;
+    margin-top: 4rem;
+}
+
+.footer-custom h5 {
+    color: var(--text-light);
+    border-bottom: 2px solid var(--primary-light);
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .welcome-section h1 {
+        font-size: 2rem;
+    }
+    .welcome-section p {
+        font-size: 1rem;
+    }
+}
+
+/* Sobrescrever classes do Bootstrap */
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.btn-success {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.btn-success:hover {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+.bg-success {
+    background-color: var(--primary-color) !important;
+}
+
+.btn-info {
+    background-color: var(--primary-light) !important;
+    border-color: var(--primary-light) !important;
+}
+
+.alert-info {
+    background-color: rgba(44, 93, 229, 0.1);
+    border-color: rgba(44, 93, 229, 0.2);
+    color: var(--primary-dark);
+}

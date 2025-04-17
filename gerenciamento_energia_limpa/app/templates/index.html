@@ -3,51 +3,74 @@
 {% block title %}GreenEnergy - Página Inicial{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Fontes de Energia Solar</h1>
-            <a href="{{ url_for('main.nova_fonte') }}" class="btn btn-success">
-                <i class="fas fa-plus-circle me-1"></i> Nova Fonte
+<!-- Seção de boas-vindas -->
+<div class="welcome-section text-center">
+    <div class="container">
+        <h1>Bem-vindo ao Gerenciador de Energia Solar</h1>
+        <p class="mt-3">Gerencie suas fontes de energia solar de forma eficiente e sustentável</p>
+        <div class="mt-4">
+            <a href="{{ url_for('main.home') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-list me-2"></i> Ver Fontes Cadastradas
             </a>
         </div>
-        
-        {% if fontes %}
-            <div class="row row-cols-1 row-cols-md-3 g-4">
-                {% for fonte in fontes %}
-                <div class="col">
-                    <div class="card h-100">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="card-title mb-0">{{ fonte.nome }}</h5>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Localização:</strong> {{ fonte.localizacao }}</p>
-                            <p><strong>Capacidade:</strong> {{ fonte.capacidade }} kWp</p>
-                            <p><strong>Modelo:</strong> {{ fonte.marca }} {{ fonte.modelo }}</p>
-                            <p><strong>Instalação:</strong> {{ fonte.data_instalacao }}</p>
-                        </div>
-                        <div class="card-footer">
-                            <div class="d-flex justify-content-between">
-                                <a href="{{ url_for('main.dashboard', fonte_id=fonte.id) }}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-chart-line me-1"></i> Dashboard
-                                </a>
-                                <a href="{{ url_for('main.detalhe_fonte', fonte_id=fonte.id) }}" class="btn btn-info btn-sm text-white">
-                                    <i class="fas fa-info-circle me-1"></i> Detalhes
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="alert alert-info">
-                <p>Nenhuma fonte de energia cadastrada ainda.</p>
-                <a href="{{ url_for('main.nova_fonte') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle me-1"></i> Cadastrar Primeira Fonte
-                </a>
-            </div>
-        {% endif %}
     </div>
 </div>
+
+<!-- Cards de funcionalidades -->
+<div class="row row-cols-1 row-cols-md-2 g-4 mt-2 justify-content-center">
+    <!-- Card 1: Cadastro de Fontes -->
+    <div class="col">
+        <div class="feature-card">
+            <div class="card-header text-center py-3">
+                <h5 class="mb-0">Cadastro de Fontes</h5>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center">
+                <div class="card-icon">
+                    <i class="fas fa-solar-panel"></i>
+                </div>
+                <p class="text-center">Cadastre e gerencie suas fontes de energia solar com facilidade. Adicione informações sobre capacidade, localização e modelo.</p>
+                <a href="{{ url_for('main.nova_fonte') }}" class="btn btn-primary-custom mt-auto">
+                    <i class="fas fa-plus-circle me-1"></i> Acessar
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Card 2: Análise -->
+    <div class="col">
+        <div class="feature-card">
+            <div class="card-header text-center py-3">
+                <h5 class="mb-0">Análise</h5>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center">
+                <div class="card-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <p class="text-center">Analise o desempenho de suas fontes de energia com gráficos e estatísticas detalhadas. Identifique padrões e otimize o rendimento.</p>
+                {% if fontes %}
+                <a href="{{ url_for('main.dashboard', fonte_id=fontes[0].id) }}" class="btn btn-primary-custom mt-auto">
+                    <i class="fas fa-search me-1"></i> Acessar
+                </a>
+                {% else %}
+                <a href="{{ url_for('main.nova_fonte') }}" class="btn btn-primary-custom mt-auto">
+                    <i class="fas fa-plus-circle me-1"></i> Cadastre uma Fonte
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fontes existentes (link secundário) -->
+{% if fontes %}
+<div class="row mt-5">
+    <div class="col-12 text-center">
+        <h3 class="text-primary">Fontes Cadastradas</h3>
+        <p>Você já possui {{ fontes|length }} fonte{% if fontes|length > 1 %}s{% endif %} cadastrada{% if fontes|length > 1 %}s{% endif %}.</p>
+        <a href="{{ url_for('main.home') }}" class="btn btn-outline-primary-custom mt-2">
+            <i class="fas fa-list me-1"></i> Ver Fontes Cadastradas
+        </a>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

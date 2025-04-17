@@ -28,9 +28,59 @@
                         <input type="text" class="form-control" id="nome" name="nome" value="{{ fonte.nome }}" required>
                     </div>
                     
+                    <!-- Campos de Endereço com Busca CEP -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="cep" class="form-label">CEP</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="cep" name="cep" maxlength="9" placeholder="00000-000">
+                                <button class="btn btn-outline-primary" type="button" id="buscarCep">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <div id="cepFeedback" class="invalid-feedback"></div>
+                            <small class="text-muted">Preencha o CEP para buscar o endereço automaticamente</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-10 mb-3">
+                            <label for="logradouro" class="form-label">Rua</label>
+                            <input type="text" class="form-control" id="logradouro" name="logradouro">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label for="numero" class="form-label">Número</label>
+                            <input type="text" class="form-control" id="numero" name="numero">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="complemento" class="form-label">Complemento</label>
+                            <input type="text" class="form-control" id="complemento" name="complemento">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="bairro" class="form-label">Bairro</label>
+                            <input type="text" class="form-control" id="bairro" name="bairro">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="cidade" class="form-label">Cidade</label>
+                            <input type="text" class="form-control" id="cidade" name="cidade">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="uf" class="form-label">Estado</label>
+                            <input type="text" class="form-control" id="uf" name="uf" maxlength="2">
+                        </div>
+                    </div>
+                    
+                    <!-- Campo de endereço completo -->
                     <div class="mb-3">
-                        <label for="localizacao" class="form-label">Localização</label>
+                        <label for="localizacao" class="form-label">Endereço Completo</label>
                         <input type="text" class="form-control" id="localizacao" name="localizacao" value="{{ fonte.localizacao }}" required>
+                        <small class="text-muted">Este campo será preenchido automaticamente ao completar os campos acima, ou você pode editar diretamente</small>
                     </div>
                     
                     <div class="mb-3">
@@ -64,4 +114,137 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tentar extrair partes do endereço do campo de localização
+        const localizacaoAtual = document.getElementById('localizacao').value;
+        if (localizacaoAtual) {
+            // Lógica básica para tentar separar o endereço (isso pode variar conforme o formato exato)
+            const partes = localizacaoAtual.split(',');
+            if (partes.length >= 3) {
+                // Assumindo formato: Rua, Número - Complemento, Bairro, Cidade - UF
+                const ruaNumero = partes[0].trim().split(' - ');
+                
+                // Logradouro e número
+                const ruaNumArr = ruaNumero[0].trim().split(/,\s*/);
+                if (ruaNumArr.length > 1) {
+                    document.getElementById('logradouro').value = ruaNumArr[0];
+                    document.getElementById('numero').value = ruaNumArr[1];
+                }
+                
+                // Complemento
+                if (ruaNumero.length > 1) {
+                    document.getElementById('complemento').value = ruaNumero[1];
+                }
+                
+                // Bairro
+                if (partes.length > 1) {
+                    document.getElementById('bairro').value = partes[1].trim();
+                }
+                
+                // Cidade e UF
+                if (partes.length > 2) {
+                    const cidadeUF = partes[2].trim().split(' - ');
+                    document.getElementById('cidade').value = cidadeUF[0];
+                    if (cidadeUF.length > 1) {
+                        document.getElementById('uf').value = cidadeUF[1];
+                    }
+                }
+            }
+        }
+        
+        // Máscara para o CEP
+        const cepInput = document.getElementById('cep');
+        cepInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Remove não-dígitos
+            if (value.length > 5) {
+                value = value.substring(0, 5) + '-' + value.substring(5, 8);
+            }
+            e.target.value = value;
+        });
+        
+        // Busca de CEP
+        const buscarCepBtn = document.getElementById('buscarCep');
+        buscarCepBtn.addEventListener('click', function() {
+            const cep = cepInput.value.replace(/\D/g, '');
+            
+            if (cep.length !== 8) {
+                showCepError('CEP inválido. Informe os 8 dígitos.');
+                return;
+            }
+            
+            // Mostrar feedback de carregamento
+            buscarCepBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            buscarCepBtn.disabled = true;
+            
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(response => response.json())
+                .then(data => {
+                    buscarCepBtn.innerHTML = '<i class="fas fa-search"></i>';
+                    buscarCepBtn.disabled = false;
+                    
+                    if (data.erro) {
+                        showCepError('CEP não encontrado.');
+                        return;
+                    }
+                    
+                    // Preencher os campos do formulário
+                    document.getElementById('logradouro').value = data.logradouro || '';
+                    document.getElementById('bairro').value = data.bairro || '';
+                    document.getElementById('cidade').value = data.localidade || '';
+                    document.getElementById('uf').value = data.uf || '';
+                    
+                    // Foca no campo de número
+                    document.getElementById('numero').focus();
+                    
+                    // Atualizar o campo de endereço completo
+                    atualizarEnderecoCompleto();
+                    
+                    // Limpar feedback de erro
+                    cepInput.classList.remove('is-invalid');
+                })
+                .catch(error => {
+                    buscarCepBtn.innerHTML = '<i class="fas fa-search"></i>';
+                    buscarCepBtn.disabled = false;
+                    showCepError('Erro ao buscar CEP. Tente novamente.');
+                    console.error('Erro na busca de CEP:', error);
+                });
+        });
+        
+        // Função para mostrar erro de CEP
+        function showCepError(message) {
+            const cepFeedback = document.getElementById('cepFeedback');
+            cepFeedback.textContent = message;
+            cepInput.classList.add('is-invalid');
+        }
+        
+        // Atualizar automaticamente o campo de endereço completo quando os dados mudam
+        const camposEndereco = ['logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf'];
+        camposEndereco.forEach(campo => {
+            document.getElementById(campo).addEventListener('input', atualizarEnderecoCompleto);
+        });
+        
+        function atualizarEnderecoCompleto() {
+            const logradouro = document.getElementById('logradouro').value;
+            const numero = document.getElementById('numero').value;
+            const complemento = document.getElementById('complemento').value;
+            const bairro = document.getElementById('bairro').value;
+            const cidade = document.getElementById('cidade').value;
+            const uf = document.getElementById('uf').value;
+            
+            let endereco = '';
+            if (logradouro) endereco += logradouro;
+            if (numero) endereco += ', ' + numero;
+            if (complemento) endereco += ' - ' + complemento;
+            if (bairro) endereco += ', ' + bairro;
+            if (cidade) endereco += ', ' + cidade;
+            if (uf) endereco += ' - ' + uf;
+            
+            document.getElementById('localizacao').value = endereco;
+        }
+    });
+</script>
 {% endblock %}

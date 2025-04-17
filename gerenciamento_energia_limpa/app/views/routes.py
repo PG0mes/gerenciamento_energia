@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
 from app.models.fonte_energia import FonteEnergia, FonteEnergiaRepository
 from app.data_processors.data_importer import GrowattDataImporter
 from app.controllers.dashboard_controller import DashboardController
@@ -6,6 +6,17 @@ import os
 from werkzeug.utils import secure_filename
 
 main = Blueprint('main', __name__)
+
+@main.before_request
+def obter_fontes():
+    """Obtém todas as fontes para uso em todas as páginas (navbar)"""
+    if request.endpoint and request.endpoint.startswith('main.'):
+        fontes = FonteEnergiaRepository.listar_todas()
+        fontes_objetos = []
+        for fonte_dict in fontes:
+            fonte = FonteEnergia.from_dict(fonte_dict)
+            fontes_objetos.append(fonte)
+        request.fontes = fontes_objetos
 
 @main.route('/')
 def index():
@@ -130,8 +141,25 @@ def dashboard(fonte_id):
         flash('Fonte não encontrada!', 'danger')
         return redirect(url_for('main.index'))
     
+    # Verificar se existem dados reais
+    dados_reais = False
+    path_simulado = f'data/simulated/fonte_{fonte_id}_simulado.csv'
+    processed_dir = 'data/processed'
+    
+    if os.path.exists(path_simulado):
+        dados_reais = True
+    
+    if os.path.exists(processed_dir):
+        processed_files = [f for f in os.listdir(processed_dir) 
+                          if f.startswith(f'fonte_{fonte_id}_') and f.endswith('.csv')]
+        if processed_files:
+            dados_reais = True
+    
     # Métricas gerais
     metricas = DashboardController.calcular_metricas_gerais(fonte_id)
+    
+    if not dados_reais:
+        flash('Exibindo dados simulados para demonstração. Para visualizar dados reais, importe ou gere dados simulados.', 'info')
     
     return render_template('dashboard.html', fonte=fonte, metricas=metricas)
 
@@ -152,4 +180,10 @@ def api_producao_horaria(fonte_id):
 def home():
     """Página inicial do sistema"""
     fontes = FonteEnergiaRepository.listar_todas()
-    return render_template('home.html', fontes=fontes)
+    return render_template('fontes_cadastradas.html', fontes=fontes)
+
+@main.route('/fontes')
+def fontes_cadastradas():
+    """Página de fontes cadastradas"""
+    fontes = FonteEnergiaRepository.listar_todas()
+    return render_template('fontes_cadastradas.html', fontes=fontes)
