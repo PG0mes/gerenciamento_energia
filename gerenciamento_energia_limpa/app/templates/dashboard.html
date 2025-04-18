@@ -17,6 +17,70 @@
     .metric-label {
         color: #6c757d;
     }
+    .alert-card {
+        border-left: 4px solid;
+        transition: all 0.3s ease;
+    }
+    .alert-card.critico {
+        border-left-color: #dc3545;
+    }
+    .alert-card.atencao {
+        border-left-color: #ffc107;
+    }
+    .alert-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .alert-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        margin-right: 15px;
+    }
+    .alert-icon.critico {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+    .alert-icon.atencao {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+    .alert-header {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .alert-time {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    .performance-status {
+        position: relative;
+        padding-left: 20px;
+    }
+    .performance-status:before {
+        content: '';
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        position: absolute;
+        left: 0;
+        top: 5px;
+    }
+    .performance-status.normal:before {
+        background-color: #28a745;
+    }
+    .performance-status.atenção:before {
+        background-color: #ffc107;
+    }
+    .performance-status.crítico:before {
+        background-color: #dc3545;
+    }
+    .performance-status.indisponível:before {
+        background-color: #6c757d;
+    }
 </style>
 {% endblock %}
 
@@ -49,9 +113,34 @@
             <a href="{{ url_for('main.editar_fonte', fonte_id=fonte.id) }}" class="btn btn-outline-secondary">
                 <i class="fas fa-edit me-1"></i> Editar Fonte
             </a>
+            <a href="{{ url_for('main.previsao_geracao', fonte_id=fonte.id) }}" class="btn btn-outline-info">
+                <i class="fas fa-cloud-sun me-1"></i> Previsão de Geração
+            </a>
         </div>
     </div>
 </div>
+
+<!-- Alerta de resumo -->
+{% if alertas_ativos %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-danger d-flex align-items-center" role="alert">
+            <div class="me-3">
+                <i class="fas fa-exclamation-circle fa-2x"></i>
+            </div>
+            <div>
+                <strong>Atenção!</strong> 
+                {% if alertas_ativos|length == 1 %}
+                    Foi detectado 1 problema com esta fonte de energia.
+                {% else %}
+                    Foram detectados {{ alertas_ativos|length }} problemas com esta fonte de energia.
+                {% endif %}
+                <a href="#alertasDetalhes" class="alert-link ms-2">Ver detalhes</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Info da Fonte -->
 <div class="row mb-4">
@@ -82,11 +171,24 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Status:</strong> <span class="badge bg-success">Ativo</span></p>
+                        <p>
+                            <strong>Performance:</strong> 
+                            <span class="performance-status {{ analise_performance.performance_status }}">
+                                {{ analise_performance.performance_status|title }}
+                            </span>
+                        </p>
                         <p><strong>Dias monitorados:</strong> {{ metricas.dias_monitorados }}</p>
                     </div>
                     <div class="col-md-6">
                         <p><strong>Última atualização:</strong> {{ metricas.ultima_atualizacao or 'N/A' }}</p>
+                        <p>
+                            <a href="{{ url_for('main.monitoramento', fonte_id=fonte.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-chart-line me-1"></i> Ver detalhes de performance
+                                {% if alertas_ativos %}
+                                <span class="badge bg-danger ms-1">{{ alertas_ativos|length }}</span>
+                                {% endif %}
+                            </a>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -121,6 +223,54 @@
         </div>
     </div>
 </div>
+
+<!-- Alertas -->
+{% if alertas_ativos %}
+<div class="row mb-4" id="alertasDetalhes">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <h5 class="card-title mb-0">Alertas Ativos ({{ alertas_ativos|length }})</h5>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for alerta in alertas_ativos %}
+                    <div class="col-12 {% if alertas_ativos|length > 1 %}col-md-6{% endif %} mb-3">
+                        <div class="card border alert-card {{ alerta.tipo }}">
+                            <div class="card-body">
+                                <div class="d-flex">
+                                    <div class="alert-icon {{ alerta.tipo }}">
+                                        <i class="fas {% if alerta.tipo == 'crítico' %}fa-exclamation-circle fa-lg{% else %}fa-exclamation-triangle fa-lg{% endif %}"></i>
+                                    </div>
+                                    <div>
+                                        <div class="alert-header">{{ alerta.tipo|title }}</div>
+                                        <p class="mb-2">{{ alerta.mensagem }}</p>
+                                        <div class="alert-time">
+                                            <i class="far fa-clock me-1"></i>Detectado em {{ alerta.data_criacao.strftime('%d/%m/%Y %H:%M') }}
+                                        </div>
+                                        <div class="mt-3">
+                                            <a href="{{ url_for('main.monitoramento', fonte_id=fonte.id) }}" class="btn btn-sm btn-outline-primary">Ver detalhes</a>
+                                            <form action="{{ url_for('main.resolver_alerta', fonte_id=fonte.id, alerta_id=alerta.id) }}" method="POST" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    <i class="fas fa-check me-1"></i>Marcar como resolvido
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Gráficos -->
 <div class="row">

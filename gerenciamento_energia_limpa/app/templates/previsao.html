@@ -1,0 +1,489 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .forecast-card {
+        transition: transform 0.2s;
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+    }
+    .forecast-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .forecast-day {
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    .forecast-date {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    .forecast-icon {
+        font-size: 2.5rem;
+        margin: 10px 0;
+    }
+    .forecast-temp {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .forecast-energy {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #28a745;
+    }
+    .forecast-meta {
+        font-size: 0.85rem;
+        margin-top: 8px;
+    }
+    .forecast-message {
+        font-size: 0.9rem;
+        margin-top: 12px;
+        min-height: 60px;
+    }
+    .weather-detail {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .weather-detail:last-child {
+        border-bottom: none;
+    }
+    .forecast-background {
+        position: absolute;
+        top: 0;
+        right: 0;
+        opacity: 0.03;
+        font-size: 8rem;
+        transform: translate(20%, -20%);
+        z-index: 0;
+    }
+    .loading-indicator {
+        text-align: center;
+        padding: 50px 0;
+    }
+    .reload-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 10;
+    }
+    /* Estilos para o gráfico */
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Início</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard', fonte_id=fonte.id) }}">Dashboard - {{ fonte.nome }}</a></li>
+                    <li class="breadcrumb-item active">Previsão de Geração</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h1>{{ titulo }}</h1>
+            <div>
+                <a href="{{ url_for('main.dashboard', fonte_id=fonte.id) }}" class="btn btn-primary">
+                    <i class="fas fa-chart-bar me-1"></i> Voltar para Dashboard
+                </a>
+                <button id="btnAtualizar" class="btn btn-success" onclick="loadForecastData(true)">
+                    <i class="fas fa-sync-alt me-1"></i> Atualizar Previsões
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo da fonte -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="card-title mb-0">Informações da Fonte</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong><i class="fas fa-map-marker-alt me-2"></i>Localização:</strong> {{ fonte.localizacao }}</p>
+                    <p><strong><i class="fas fa-solar-panel me-2"></i>Capacidade:</strong> {{ fonte.capacidade }} kWp</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong><i class="fas fa-industry me-2"></i>Inversor:</strong> {{ fonte.marca }} {{ fonte.modelo }}</p>
+                    <p><strong><i class="fas fa-calendar-alt me-2"></i>Instalação:</strong> {{ fonte.data_instalacao }}</p>
+                </div>
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        A previsão é baseada em dados meteorológicos e no histórico de geração da sua instalação.
+                        As condições climáticas podem mudar, afetando a precisão das previsões.
+                        <hr>
+                        <small>Nota: Para previsões meteorológicas em tempo real, configure uma chave válida da API OpenWeather no arquivo .env.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de previsão -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Condições para Geração Solar nos Próximos Dias</h5>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="previsaoChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cartões de previsão por dia -->
+    <div class="row mb-4" id="previsaoCards">
+        <div class="col-12">
+            <div class="loading-indicator">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2">Carregando previsões...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadForecastData();
+
+        // Botão para recarregar os dados
+        document.querySelector('.reload-btn')?.addEventListener('click', function() {
+            loadForecastData(true);
+        });
+    });
+
+    function loadForecastData(forceRefresh = false) {
+        // Mostrar indicador de carregamento
+        document.getElementById('previsaoCards').innerHTML = `
+            <div class="col-12">
+                <div class="loading-indicator">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando previsões...</p>
+                </div>
+            </div>
+        `;
+
+        // Parâmetros da requisição
+        const params = new URLSearchParams();
+        if (forceRefresh) {
+            params.append('refresh', 'true');
+        }
+
+        // Fazer requisição à API
+        fetch('/api/fonte/{{ fonte.id }}/previsao-geracao?' + params.toString())
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.previsoes && data.previsoes.length > 0) {
+                    renderForecast(data.previsoes);
+                    renderChart(data.previsoes);
+                    
+                    // Mostrar aviso se os dados são simulados
+                    if (data.is_simulated) {
+                        document.querySelector('.container').insertAdjacentHTML('afterbegin', `
+                            <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Aviso:</strong> Exibindo dados de previsão simulados. 
+                                A previsão real não está disponível no momento.
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        `);
+                    }
+                } else {
+                    showError(data.message || 'Não foi possível obter previsões');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar previsões:', error);
+                showError('Erro ao carregar previsões. Tente novamente mais tarde.');
+            });
+    }
+
+    function renderForecast(previsoes) {
+        const container = document.getElementById('previsaoCards');
+        
+        // Limpar container
+        container.innerHTML = `
+            <div class="col-12 mb-3">
+                <button class="btn btn-sm btn-outline-secondary reload-btn">
+                    <i class="fas fa-sync-alt me-1"></i> Atualizar previsões
+                </button>
+            </div>
+        `;
+        
+        // Renderizar cartão para cada dia
+        previsoes.forEach(previsao => {
+            const weatherIconClass = getWeatherIconClass(previsao.weather_id);
+            const cardClass = getCardClassByWeather(previsao.weather_main);
+            
+            const cardHtml = `
+                <div class="col-md-4 col-sm-6 mb-4">
+                    <div class="card forecast-card ${cardClass}">
+                        <div class="forecast-background">
+                            <i class="fas ${weatherIconClass}"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="forecast-day">${previsao.weekday_short}</div>
+                            <div class="forecast-date">${previsao.date_formatted}</div>
+                            
+                            <div class="text-center my-3">
+                                <div class="forecast-icon">
+                                    <i class="fas ${weatherIconClass}"></i>
+                                </div>
+                                <div class="forecast-temp">${previsao.temp_min}°C ~ ${previsao.temp_max}°C</div>
+                            </div>
+                            
+                            <div class="weather-details mt-3">
+                                <div class="weather-detail">
+                                    <span><i class="fas fa-cloud me-2"></i> Nuvens:</span>
+                                    <span>${previsao.clouds}%</span>
+                                </div>
+                                <div class="weather-detail">
+                                    <span><i class="fas fa-sun me-2"></i> Índice UV:</span>
+                                    <span>${previsao.uvi}</span>
+                                </div>
+                                <div class="weather-detail">
+                                    <span><i class="fas fa-tint me-2"></i> Chuva:</span>
+                                    <span>${previsao.pop}%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="forecast-message alert ${getAlertClassByFactor(previsao.fator_climatico)} mt-3">
+                                <i class="fas fa-info-circle me-1"></i> ${previsao.mensagem}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML += cardHtml;
+        });
+        
+        // Adicionar event listener para o botão de atualização
+        document.querySelector('.reload-btn').addEventListener('click', function() {
+            loadForecastData(true);
+        });
+    }
+
+    function renderChart(previsoes) {
+        const ctx = document.getElementById('previsaoChart').getContext('2d');
+        
+        // Extrair dados para o gráfico
+        const labels = previsoes.map(p => p.weekday_short);
+        const climateFactors = previsoes.map(p => p.fator_climatico);
+        const weatherIcons = previsoes.map(p => getWeatherIconClass(p.weather_id));
+        const colorsByWeather = previsoes.map(p => getColorByWeather(p.weather_main));
+        
+        // Criar ou atualizar o gráfico
+        if (window.forecastChart) {
+            window.forecastChart.destroy();
+        }
+        
+        window.forecastChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Condição para geração solar (%)',
+                    data: climateFactors,
+                    backgroundColor: colorsByWeather,
+                    borderColor: colorsByWeather.map(color => color.replace('0.6', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '%'
+                        },
+                        max: 100
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterTitle: function(context) {
+                                const idx = context[0].dataIndex;
+                                return previsoes[idx].date_formatted;
+                            },
+                            afterBody: function(context) {
+                                const idx = context[0].dataIndex;
+                                return [
+                                    `Condições: ${previsoes[idx].weather_description}`,
+                                    `Temperatura: ${previsoes[idx].temp_min}°C ~ ${previsoes[idx].temp_max}°C`,
+                                    `Nuvens: ${previsoes[idx].clouds}%`,
+                                    `Chance de chuva: ${previsoes[idx].pop}%`
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function showError(message) {
+        const container = document.getElementById('previsaoCards');
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i> ${message}
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary" onclick="loadForecastData(true)">
+                        <i class="fas fa-sync-alt me-1"></i> Tentar novamente
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    function getWeatherIconClass(weatherId) {
+        const iconMap = {
+            // Thunderstorm
+            200: 'fa-bolt',
+            201: 'fa-bolt',
+            202: 'fa-bolt',
+            210: 'fa-bolt',
+            211: 'fa-bolt',
+            212: 'fa-bolt',
+            221: 'fa-bolt',
+            230: 'fa-bolt',
+            231: 'fa-bolt',
+            232: 'fa-bolt',
+            
+            // Drizzle
+            300: 'fa-cloud-rain',
+            301: 'fa-cloud-rain',
+            302: 'fa-cloud-rain',
+            310: 'fa-cloud-rain',
+            311: 'fa-cloud-rain',
+            312: 'fa-cloud-rain',
+            313: 'fa-cloud-rain',
+            314: 'fa-cloud-rain',
+            321: 'fa-cloud-rain',
+            
+            // Rain
+            500: 'fa-cloud-showers-heavy',
+            501: 'fa-cloud-showers-heavy',
+            502: 'fa-cloud-showers-heavy',
+            503: 'fa-cloud-showers-heavy',
+            504: 'fa-cloud-showers-heavy',
+            511: 'fa-snowflake',
+            520: 'fa-cloud-showers-heavy',
+            521: 'fa-cloud-showers-heavy',
+            522: 'fa-cloud-showers-heavy',
+            531: 'fa-cloud-showers-heavy',
+            
+            // Snow
+            600: 'fa-snowflake',
+            601: 'fa-snowflake',
+            602: 'fa-snowflake',
+            611: 'fa-snowflake',
+            612: 'fa-snowflake',
+            613: 'fa-snowflake',
+            615: 'fa-snowflake',
+            616: 'fa-snowflake',
+            620: 'fa-snowflake',
+            621: 'fa-snowflake',
+            622: 'fa-snowflake',
+            
+            // Atmosphere
+            701: 'fa-smog',
+            711: 'fa-smog',
+            721: 'fa-smog',
+            731: 'fa-smog',
+            741: 'fa-smog',
+            751: 'fa-smog',
+            761: 'fa-smog',
+            762: 'fa-smog',
+            771: 'fa-wind',
+            781: 'fa-tornado',
+            
+            // Clear and Clouds
+            800: 'fa-sun',
+            801: 'fa-cloud-sun',
+            802: 'fa-cloud-sun',
+            803: 'fa-cloud',
+            804: 'fa-cloud'
+        };
+        
+        return iconMap[weatherId] || 'fa-cloud';
+    }
+
+    function getCardClassByWeather(weatherMain) {
+        switch (weatherMain) {
+            case 'Clear':
+                return 'border-warning';
+            case 'Clouds':
+                return 'border-info';
+            case 'Rain':
+            case 'Drizzle':
+                return 'border-primary';
+            case 'Thunderstorm':
+                return 'border-danger';
+            case 'Snow':
+                return 'border-light';
+            default:
+                return 'border-secondary';
+        }
+    }
+
+    function getColorByWeather(weatherMain) {
+        switch (weatherMain) {
+            case 'Clear':
+                return 'rgba(255, 193, 7, 0.6)';  // amber/yellow
+            case 'Clouds':
+                return 'rgba(108, 117, 125, 0.6)';  // gray
+            case 'Rain':
+            case 'Drizzle':
+                return 'rgba(13, 110, 253, 0.6)';  // blue
+            case 'Thunderstorm':
+                return 'rgba(220, 53, 69, 0.6)';  // red
+            case 'Snow':
+                return 'rgba(248, 249, 250, 0.6)';  // light
+            default:
+                return 'rgba(108, 117, 125, 0.6)';  // gray
+        }
+    }
+
+    function getAlertClassByFactor(factor) {
+        if (factor >= 80) {
+            return 'alert-success';
+        } else if (factor >= 60) {
+            return 'alert-info';
+        } else if (factor >= 40) {
+            return 'alert-warning';
+        } else {
+            return 'alert-danger';
+        }
+    }
+</script>
+{% endblock %} 
